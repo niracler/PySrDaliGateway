@@ -953,6 +953,62 @@ class DaliGatewayTester:
 
         return True
 
+    async def test_identify_device(self) -> bool:
+        """Test device identify command."""
+        if not self._check_connection():
+            return False
+
+        if not self.devices:
+            _LOGGER.error("No devices available! Run device discovery first.")
+            return False
+
+        _LOGGER.info("=== Testing Device Identify Command ===")
+
+        try:
+            gateway = self._assert_gateway()
+
+            # Test identify on first few devices
+            devices_to_identify = self.devices[:3]  # Test up to 3 devices
+            _LOGGER.info("Testing identify on %d device(s)", len(devices_to_identify))
+
+            for i, device in enumerate(devices_to_identify, 1):
+                model_info = device.model or "N/A"
+                _LOGGER.info(
+                    "Identifying device %d/%d: %s (Channel %s, Address %s, Model: %s)",
+                    i,
+                    len(devices_to_identify),
+                    device.name,
+                    device.channel,
+                    device.address,
+                    model_info,
+                )
+
+                # Send identify command using device method if available
+                if hasattr(device, "identify"):
+                    device.identify()
+                    _LOGGER.debug("Used device.identify() method")
+                else:
+                    # Fallback to gateway command directly
+                    gateway.command_identify_dev(
+                        device.dev_type, device.channel, device.address
+                    )
+                    _LOGGER.debug("Used gateway.command_identify_dev() method")
+
+                # Wait between commands to allow device to flash/blink
+                _LOGGER.info("Device should be flashing/blinking now...")
+                await asyncio.sleep(3)
+
+            _LOGGER.info(
+                "✓ Identify commands sent to %d device(s)", len(devices_to_identify)
+            )
+
+        except (DaliGatewayError, RuntimeError) as e:
+            _LOGGER.error("Identify device test failed: %s", e)
+            return False
+        else:
+            _LOGGER.info("✓ Device identify test completed successfully")
+            return True
+
     async def test_restart_gateway(self) -> bool:
         """Test gateway restart command."""
         if not self._check_connection():
@@ -1009,6 +1065,7 @@ class DaliGatewayTester:
             ("Device Discovery", self.test_device_discovery),
             ("Callbacks", self.test_callback_setup),
             ("ReadDev", self.test_read_dev),
+            ("Identify Device", self.test_identify_device),
             ("SetDevParam", self.test_set_dev_param),
             ("Group Discovery", self.test_group_discovery),
             ("Read Group", self.test_read_group),
@@ -1088,6 +1145,7 @@ Examples:
             "version",
             "devices",
             "readdev",
+            "identify",
             "setdevparam",
             "groups",
             "readgroup",
@@ -1210,6 +1268,11 @@ async def run_selected_tests(tester: DaliGatewayTester, args: Any) -> bool:
             ["connection", "devices"],
             "ReadDev Commands",
         ),
+        "identify": (
+            tester.test_identify_device,
+            ["connection", "devices"],
+            "Identify Device",
+        ),
         "setdevparam": (
             tester.test_set_dev_param,
             ["connection"],
@@ -1245,6 +1308,7 @@ async def run_selected_tests(tester: DaliGatewayTester, args: Any) -> bool:
             "devices",
             "callbacks",
             "readdev",
+            "identify",
             "setdevparam",
             "groups",
             "readgroup",
@@ -1356,6 +1420,7 @@ async def main() -> bool:
             "version": "Get gateway firmware version",
             "devices": "Discover connected DALI devices",
             "readdev": "Read device status via MQTT",
+            "identify": "Identify devices (make them flash/blink)",
             "setdevparam": "Set device parameters (maxBrightness)",
             "groups": "Discover DALI groups",
             "readgroup": "Read group details with device list",

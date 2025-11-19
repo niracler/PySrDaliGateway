@@ -44,6 +44,9 @@ class SupportsDeviceCommands(Protocol):
     ) -> None:
         raise NotImplementedError
 
+    def command_identify_dev(self, dev_type: str, channel: int, address: int) -> None:
+        raise NotImplementedError
+
     def register_listener(
         self,
         event_type: CallbackEventType,
@@ -213,6 +216,15 @@ class Device:
         )
         _LOGGER.debug(
             "Requesting energy data for device %s (%s)",
+            self.dev_id,
+            self.name,
+        )
+
+    def identify(self) -> None:
+        """Make the device physically identify itself (e.g., flash or blink)."""
+        self._client.command_identify_dev(self.dev_type, self.channel, self.address)
+        _LOGGER.debug(
+            "Sending identify command to device %s (%s)",
             self.dev_id,
             self.name,
         )

@@ -374,6 +374,7 @@ class DaliGateway:
                 "getSensorOnOffRes": self._process_get_sensor_on_off_response,
                 "setDevParamRes": self._process_write_response,
                 "getDevParamRes": self._process_get_dev_param_response,
+                "identifyDevRes": self._process_identify_response,
             }
 
             handler = command_handlers.get(cmd)
@@ -755,6 +756,15 @@ class DaliGateway:
         _LOGGER.debug(
             "Gateway %s: Received getDevParamRes response, payload: %s",
             self._gw_sn,
+            payload,
+        )
+
+    def _process_identify_response(self, payload: Dict[str, Any]) -> None:
+        ack = payload.get("ack", False)
+        _LOGGER.debug(
+            "Gateway %s: Received identifyDevRes response, ack: %s, payload: %s",
+            self._gw_sn,
+            ack,
             payload,
         )
 
@@ -1206,6 +1216,28 @@ class DaliGateway:
         command_json = json.dumps(command)
         _LOGGER.debug(
             "Gateway %s: Sending setDevParam command: %s", self._gw_sn, command
+        )
+        self._mqtt_client.publish(self._pub_topic, command_json)
+
+    def command_identify_dev(self, dev_type: str, channel: int, address: int) -> None:
+        """Send identify command to make a device physically identify itself."""
+        command: Dict[str, Any] = {
+            "cmd": "identifyDev",
+            "msgId": str(int(time.time())),
+            "gwSn": self._gw_sn,
+            "data": {
+                "devType": dev_type,
+                "channel": channel,
+                "address": address,
+            },
+        }
+        command_json = json.dumps(command)
+        _LOGGER.debug(
+            "Gateway %s: Sending identify command for device %s at channel %s, address %s",
+            self._gw_sn,
+            dev_type,
+            channel,
+            address,
         )
         self._mqtt_client.publish(self._pub_topic, command_json)
 
